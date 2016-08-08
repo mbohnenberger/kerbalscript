@@ -1,29 +1,53 @@
-function PRINT_MSG {
+// some variables to abstract stuff away
+GLOBAL HAS_PREDICTION TO Career():CANMAKENODES.
+GLOBAL HAS_ACTION_GROUPS TO Career():CANDOACTIONS.
+GLOBAL DEBUG_MODE TO false.
+
+function ENABLE_DEBUG_MODE {
+	set DEBUG_MODE TO true.
+	LOG_DEBUG("Debug mode enabled.").
+}.
+
+// IO
+function LOG_MSG {
 	parameter message.
 	parameter color.
+	parameter writeToLog is False.
 	HUDTEXT(message, 10, 1, 30, color, false).
+	PRINT(message).
+	if writeToLog {LOG message to lastLaunch.txt.}
 }.
 
-function PRINT_INFO {
+function HUD_HUGE_ALERT {
 	parameter message.
-	PRINT_MSG("INFO: " + message, white).
+	HUDTEXT(message, 10, 2, 60, red, false).
 }.
 
-function PRINT_DEBUG {
+function LOG_INFO {
 	parameter message.
-	PRINT_MSG("DEBUG: " + message, blue).
+	parameter writeToLog is False.
+	LOG_MSG("INFO: " + message, white, writeToLog).
 }.
 
-function PRINT_WARN {
+function LOG_DEBUG {
 	parameter message.
-	PRINT_MSG("WARNING: " + message, yellow).
+	parameter writeToLog is False.
+	if(DEBUG_MODE) {LOG_MSG("DEBUG: " + message, blue, writeToLog).}
 }.
 
-function PRINT_ERROR {
+function LOG_WARN {
 	parameter message.
-	PRINT_MSG("ERROR: " + message, red).
+	parameter writeToLog is False.
+	LOG_MSG("WARNING: " + message, yellow, writeToLog).
 }.
 
+function LOG_ERROR {
+	parameter message.
+	parameter writeToLog is False.
+	LOG_MSG("ERROR: " + message, red, writeToLog).
+}.
+
+// this should probably live somewhere else..
 function safe_stage {
 	parameter doStage is True.
 	parameter thrttl is 1.0.
