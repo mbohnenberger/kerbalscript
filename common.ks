@@ -58,3 +58,16 @@ function safe_stage {
 	}
 }.
 
+// common delegates
+function apoD { return APOAPSIS. }.
+function periD { return PERIAPSIS. }.
+function etaApoD { return ETA:APOAPSIS. }. 
+function etaPeriD { return ETA:PERIAPSIS. }. 
+function progradeD { return PROGRADE. }.
+function retrogradeD { return RETROGRADE. }.
+GLOBAL dApo TO apoD@.
+GLOBAL dPeri TO periD@.
+GLOBAL dEtaApo TO etaApoD@.
+GLOBAL dEtaPeri TO etaPeriD@.
+GLOBAL dPrograde TO progradeD@.
+GLOBAL dRetrograde TO retrogradeD@.

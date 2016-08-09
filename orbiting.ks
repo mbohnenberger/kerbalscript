@@ -1,113 +1,182 @@
 copy common from 0.
 run once common.
 
-// more compact version of increase/decrease apoapsis/periapsis
-function changeOrbit {
-	parameter operation.
-    parameter height.
-    parameter finalStage.
+function controlledBurn {
+	parameter etaDelegate.
+	parameter burnSettings. // format (throttle, stopCondition, windowLeft (negative), windowRight, stopFactor (a scaling factor that stops the burn when reacing stopFactor*windowLeft/Right), restartFactor (same as stopFactor for restarting the burn))
 	parameter autoStage is True.
-	parameter burnSequence is list().
+
+	// if we are outside the burn window, wait till we hit it again, unless we're close to target height
+	// don't check for the right window if it's set to a negative number
+	if burnSettings[2] > 0 {
+		// left window right of eta. TODO: Don't ignore stop factor
+		set outsideLeftWindow to (ORBIT:PERIOD - etaDelegate:call()) < burnSettings[2].
+	} else {
+		set outsideLeftWindow to etaDelegate:call() > -burnSettings[2]*burnSettings[4].
+	}
+	if burnSettings[3] < 0 {
+		// right window left of eta. TODO: Don't ignore stop factor
+		set outsideRightWindow to etaDelegate:call() < -burnSettings[3].
+	} else {
+		set outsideRightWindow to (ORBIT:PERIOD - etaDelegate:call()) > burnSettings[4]*burnSettings[3].
+	}
+	if outsideLeftWindow AND outsideRightWindow { 
+		LOG_DEBUG("Outside burn window. Waiting.").
+		LOCK THROTTLE TO 0. 
+		WAIT UNTIL (etaDelegate:call() < burnSettings[5] * burnSettings[2]) or ((ORBIT:PERIOD - etaDelegate:call()) < burnSettings[5] * burnSettings[3]). // wait a little longer (restartBurnFactor) to avoid constant turning off and on
+		LOG_DEBUG("Continuing.").
+	}
+	// otherwise burn
+	else {
+		LOCK THROTTLE TO burnSettings[0]. 
+		if autoStage { safe_stage(MAXTHRUST = 0, burnSettings[0]). }	
+	}
+}.
+
+function orbitManeuver {
+	parameter orbitDelegate. // a function returning the current state of the attribute to change 
+	parameter target. // target of the attribute 
+	parameter etaDelegate. // a function returning the time to the opposing point on the orbit
+	parameter dirDelegate. // a function returning the direction to burn in
+	parameter finalStage.
+	parameter autoStage is True.
+	parameter burnSequence is list(). // format list(list(throttle, stopCondition, windowLeft (negative), windowRight, stopFactor, restartFactor))
 
 	if ALT:RADAR < 100 { LOG_ERROR("Ship is grounded. Can't change orbit."). RETURN. }
 
-	set increaseApoapsis to false.
-	set increasePeriapsis to false.
-	set decreaseApoapsis to false.
-	set decreasePeriapsis to false.	
-	if operation = "A+" { LOG_INFO("Increasing apoapsis"). set increaseApoapsis to true. }
-	else if operation = "P+" { LOG_INFO("Increasing periapsis"). set increasePeriapsis to true.} 
-	else if operation = "A-" { LOG_INFO("Decreasing apoapsis"). set increasePeriapsis to true. } 
-	else if operation = "P-" { LOG_INFO("Decreasing periapsis"). set increasePeriapsis to true.	} 
-	else { LOG_ERROR("Unknown operation: " + operation). }
-	
-	if increaseApoapsis or increasePeriapsis { if burnSequence:EMPTY { set burnSequence to list(1.0, height * 0.9, 0.2, height). }} 
-	else { if burnSequence:EMPTY { set burnSequence to list(1.0, height * 1.1, 0.2, height). }}
+	set isIncrease to orbitDelegate:call() < target. // are we increasing something?
 
-	if increaseApoapsis  and APOAPSIS  > height { RETURN. }
-	if increasePeriapsis and PERIAPSIS > height { RETURN. }
-	if decreaseApoapsis  and APOAPSIS  < height { RETURN. }
-	if decreasePeriapsis and PERIAPSIS < height { RETURN. }
-
-	set error to 0.
-	if increaseApoapsis  { set error to height - APOAPSIS. }
-	if increasePeriapsis { set error to height - PERIAPSIS. }
-	if decreaseApoapsis  { set error to APOAPSIS - height. }
-	if decreasePeriapsis { set error to PERIAPSIS - height. }
-    set estimateBurnTime to error / 100000 * 5.
-    set etaBurnStart to estimateBurnTime / 2. // heuristic for when to start burn: 5 seconds for 100km difference. 
-	LOG_DEBUG("Estimated burn time: " + estimateBurnTime).
-	LOG_DEBUG("Burn scheduled for: " + etaBurnStart + "s before Apo/Peri").
-
-	// TODO: remove this block with kOS v1.0.0 and use the one below instead.
-	if increasePeriapsis or decreasePeriapsis { WAIT UNTIL ETA:APOAPSIS < etaBurnStart + 60.} 
-	else { WAIT UNTIL ETA:PERIAPSIS < etaBurnStart + 60. }
-	HUD_HUGE_ALERT("!!! STOP WARPING !!!").
-
-	if increasePeriapsis or decreasePeriapsis { WAIT UNTIL ETA:APOAPSIS < etaBurnStart + 10.} 
-	else { WAIT UNTIL ETA:PERIAPSIS < etaBurnStart + 10. }
-	//SET WARP TO 0. // doesn't work in current version. fixed for kOS 1.0.0 TODO: uncomment with v1.0.0
-
-	if increaseApoapsis or increasePeriapsis { LOCK STEERING TO PROGRADE. } 
-	else { LOCK STEERING TO RETROGRADE. }
-
-	if increasePeriapsis or decreasePeriapsis { WAIT UNTIL ETA:APOAPSIS < etaBurnStart.}
-	else { WAIT UNTIL ETA:PERIAPSIS < etaBurnStart. }
-	
-    LOG_INFO("Starting burn").
+	LOG_INFO("Starting burn sequence").
 	FROM { local i is 0. }
 	UNTIL i >= burnSequence:LENGTH
-	STEP { set i to i+2. } 
+	STEP { set i to i+1. } 
 	DO {
-		LOG_DEBUG("Burn at " + burnSequence[i] + " until " + burnSequence[i+1]).
-    	LOCK THROTTLE TO burnSequence[i]. 
-
-		if increasePeriapsis {
-			UNTIL PERIAPSIS > burnSequence[i+1] OR STAGE:NUMBER < finalStage { if autoStage { safe_stage(MAXTHRUST = 0, burnSequence[i]). }	}
-		} else if increaseApoapsis {
-			UNTIL APOAPSIS > burnSequence[i+1] OR STAGE:NUMBER < finalStage { if autoStage { safe_stage(MAXTHRUST = 0, burnSequence[i]). }	}
-		} else if decreasePeriapsis { 
-			UNTIL PERIAPSIS < burnSequence[i+1] OR STAGE:NUMBER < finalStage { if autoStage { safe_stage(MAXTHRUST = 0, burnSequence[i]). }	}
-		} else if decreaseApoapsis {
-			UNTIL APOAPSIS < burnSequence[i+1] OR STAGE:NUMBER < finalStage { if autoStage { safe_stage(MAXTHRUST = 0, burnSequence[i]). }	}
-		} else { LOG_ERROR("Something has gone completely wrong. Should never happen...famous last words."). }
-    	LOCK THROTTLE TO 0.0.
+		if isIncrease {
+			// until we have surpassed the current stop condition or have finished with the final stage or have reached the target
+			UNTIL orbitDelegate:call() > burnSequence[i][1] OR STAGE:NUMBER < finalStage OR orbitDelegate:call() > target { 
+				LOCK STEERING TO dirDelegate:call(). // have to do this inside the loop, otherwise we'll lock to a static value
+				controlledBurn(etaDelegate, burnSequence[i], autoStage).
+			}
+		} else {
+			UNTIL orbitDelegate:call() < burnSequence[i][1] OR STAGE:NUMBER < finalStage OR orbitDelegate:call() < target { 
+				LOCK STEERING TO dirDelegate:call(). // see above
+				controlledBurn(etaDelegate, burnSequence[i], autoStage).
+			}
+		}
+		
+		LOCK THROTTLE TO 0.0.
 	}
 
 	UNLOCK STEERING.
     LOCK THROTTLE TO 0.0.
     LOG_INFO("Burn complete").
-    if increasePeriapsis and PERIAPSIS < height { LOG_WARN("Periapsis not fully increased"). }
-	else if increaseApoapsis and APOAPSIS < height { LOG_WARN("Apoapsis not fully increased"). }
-	else if decreasePeriapsis and PERIAPSIS > height { LOG_WARN("Periapsis not fully decreased"). }
-	else if decreaseApoapsis and APOAPSIS > height { LOG_WARN("Apoapsis not fully decreased"). }
-}
+    if isIncrease and orbitDelegate:call() < target { LOG_WARN("Orbit attribute not fully increased"). }
+	else if isIncrease <> true and orbitDelegate:call() > target{ LOG_WARN("Orbit attribute not fully decreased"). }
+}.
+
+function guesstimateHeightChangeBurn {
+	parameter currentHeight.
+	parameter targetHeight.
+	set error to targetHeight - currentHeight.
+	set est to error/100000 * 5.
+	if est < 0 { set est to -est. }
+	return est.
+}.
+
+function getDefaultBurnSequence {
+	parameter currentState.
+	parameter targetState.
+	parameter burnTime.
+
+	if targetState > currentState {
+		// we are increasing the state
+		set d to targetState - currentState.
+		set burnSequence to list(
+			// throttle		stop condition		window left		window right		stop factor		restart factor
+			// we'll always keep the burn pivot, e.g. apoapsis, in front of us by limiting the burn window. This avoids a "go-around" during the burn.
+			// also set a wider burn window for the last part of the burn
+			list(1.00,	0.80 * d, 	-burnTime / 2, -1,	1.5,	0.5),
+			list(0.50,	0.90 * d, 	-burnTime / 2, -1,	1.5,	0.5),
+			list(0.10,	0.95 * d, 	-burnTime / 2, -1,	2.0,	0.5),
+			list(0.05,	1.00 * d, 	-burnTime / 2, -1,	5.0,	4.0)
+		).
+		return burnSequence.
+	} else {
+		set d to currentState - targetState.
+		set burnSequence to list(
+			list(1.00,	1.20 * d, 	-burnTime / 2, -1,	1.5,	0.5),
+			list(0.50,	1.10 * d, 	-burnTime / 2, -1,	1.5,	0.5),
+			list(0.10,	1.05 * d, 	-burnTime / 2, -1,	2.0,	0.5),
+			list(0.05,	1.00 * d, 	-burnTime / 2, -1,	5.0,	4.0)
+		).
+		return burnSequence.
+	}
+}.
+
+function changePeriapsis {
+	parameter height.
+	parameter finalStage.
+	parameter autoStage is True.
+	parameter burnSequence is list().
+	
+	if burnSequence:EMPTY {
+		set burnTime to guesstimateHeightChangeBurn(PERIAPSIS, height).
+		set burnSequence to getDefaultBurnSequence(PERIAPSIS, height, burnTime).
+	}
+
+	if height > PERIAPSIS {	
+		orbitManeuver(dPeri, height, dEtaApo, dPrograde, finalStage, autoStage, burnSequence).
+	} else {
+		orbitManeuver(dPeri, height, dEtaApo, dRetrograde, finalStage, autoStage, burnSequence).
+	}
+}.
+
+function changeApoapsis {
+	parameter height.
+	parameter finalStage.
+	parameter autoStage is True.
+	parameter burnSequence is list().
+
+	if burnSequence:EMPTY {
+		set burnTime to guesstimateHeightChangeBurn(PERIAPSIS, height).
+		set burnSequence to getDefaultBurnSequence(PERIAPSIS, height, burnTime).
+	}
+
+	if height > APOAPSIS {	
+		orbitManeuver(dApo, height, dEtaPeri, dPrograde, finalStage, autoStage, burnSequence).
+	} else {
+		orbitManeuver(dApo, height, dEtaPeri, dRetrograde, finalStage, autoStage, burnSequence).
+	}
+}.
 
 function establishOrbit {
 	parameter peri.
 	parameter finalStage.
 	parameter autoStage.
 
+	LOG_INFO("Lifting periapsis to " + peri + "m").
 	if ETA:APOAPSIS > ETA:PERIAPSIS AND PERIAPSIS < SHIP:ORBIT:BODY:ATMOSPHERE:HEIGHT { 
 		LOG_ERROR("Missed apoapsis with periapsis below atmosphere. FIX MANUALLY!"). 
 		RETURN.
 	}
- 
-	set burnSequence to list(
-		1.0, 0.8 * peri,
-		0.5, 0.9 * peri,
-		0.1, peri	
-	).
-	changeOrbit("P+", peri, finalStage, autoStage, burnSequence).
+	changePeriapsis(peri, finalStage, autoStage).
 }.
 
 function stabilizeOrbit {
-	parameter apo.
-	parameter peri.
+	parameter h1.
+	parameter h2.
 	parameter finalStage.
 	parameter autoStage.
 	parameter err is 0.01.
 
+	set apo to 0. set peri to 0.
+	if h1 > h2 {
+		set apo to h1. set peri to h2.		
+	} else {
+		set apo to h2. set peri to h1.
+	}
+
+	LOG_INFO("Stabilizing orbit with apoapsis/periapis: (" + apo + " - " + peri + ")"). 
 	if ETA:APOAPSIS > ETA:PERIAPSIS AND PERIAPSIS < SHIP:ORBIT:BODY:ATMOSPHERE:HEIGHT { 
 		LOG_ERROR("Missed apoapsis with periapsis below atmosphere. FIX MANUALLY!"). 
 		RETURN.
@@ -116,40 +185,16 @@ function stabilizeOrbit {
     set errorApo to APOAPSIS - apo.
 	set errorPeri to PERIAPSIS - peri.
 
-	UNTIL errorApo < err * APOAPSIS AND errorPeri < err * PERIAPSIS OR STAGE:NUMBER < finalStage {
+	UNTIL (errorApo < err * APOAPSIS AND errorPeri < err * PERIAPSIS) OR STAGE:NUMBER < finalStage {
 		if ETA:APOAPSIS < ETA:PERIAPSIS {
-			if APOAPSIS < apo {
-				set burnSequence to list(
-					1.0, 0.8 * apo,
-					0.5, 0.9 * apo,
-					0.1, apo 
-				).
-				changeOrbit("A+", apo, finalStage, autoStage, burnSequence).
-			} else { 
-				set burnSequence to list(
-					1.0, 1.2 * apo,
-					0.5, 1.1 * apo,
-					0.1, apo 
-				).
-				changeOrbit("A-", apo, finalStage, autoStage, burnSequence).
-			}			
+			changeApoapsis(apo, finalStage, autoStage).
 		}
 		else {
-			if PERIAPSIS < peri {
-				set burnSequence to list(
-					1.0, 0.8 * peri,
-					0.5, 0.9 * peri,
-					0.1, peri 
-				).
-				changeOrbit("P+", peri, finalStage, autoStage, burnSequence).
-			} else {
-				set burnSequence to list(
-					1.0, 1.2 * peri,
-					0.5, 1.1 * peri,
-					0.1, peri 
-				).
-				changeOrbit("P-", peri, finalStage, autoStage, burnSequence).
-			}
+			changePeriapsis(peri, finalStage, autoStage).
 		}
+    	set errorApo to APOAPSIS - apo.
+		set errorPeri to PERIAPSIS - peri.
 	}
+
+	LOG_INFO("Orbit stabilized. ErrorA: " + errorApo + " ErrorP: " + errorPeri).
 }.
