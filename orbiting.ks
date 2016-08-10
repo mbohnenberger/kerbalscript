@@ -21,8 +21,18 @@ function controlledBurn {
 		set insideRightWindow to (ORBIT:PERIOD - etaDelegate:call()) < burnSettings[4]*burnSettings[3].
 	}
 
+	set insideWindow to false.
+	if burnSettings[2] > 0 OR burnSettings[3] < 0 {
+		// here checks DO overlap.
+		// TODO: handle case where both are true
+		set insideWindow to insideLeftWindow AND insideRightWindow.
+	} else {
+		// here checks don't overlap
+		set insideWindow to insideLeftWindow OR insideRightWindow.
+	}
+
 	// needs to be ored because the checks don't overlap.
-	if insideLeftWindow OR insideRightWindow { 
+	if insideWindow { 
 		LOCK THROTTLE TO burnSettings[0]. 
 		if autoStage { safe_stage(MAXTHRUST = 0, burnSettings[0]). }	
 	} else {
