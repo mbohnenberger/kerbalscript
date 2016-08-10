@@ -3,7 +3,7 @@ run once common.
 
 function controlledBurn {
 	parameter etaDelegate.
-	parameter burnSettings. // format (throttle, stopCondition, windowLeft (negative), windowRight, stopFactor (a scaling factor that stops the burn when reacing stopFactor*windowLeft/Right), restartFactor (same as stopFactor for restarting the burn))
+	parameter burnSettings. // format (throttle, stopCondition, windowLeft, windowRight, stopFactor (a scaling factor that stops the burn when reacing stopFactor*windowLeft/Right), restartFactor (same as stopFactor for restarting the burn))
 	parameter autoStage is True.
 
 	// if we are outside the burn window, wait till we hit it again, unless we're close to target height
@@ -20,7 +20,7 @@ function controlledBurn {
 	} else {
 		set outsideRightWindow to (ORBIT:PERIOD - etaDelegate:call()) > burnSettings[4]*burnSettings[3].
 	}
-	if outsideLeftWindow AND outsideRightWindow { 
+	if outsideLeftWindow OR outsideRightWindow { 
 		LOG_DEBUG("Outside burn window. Waiting.").
 		LOCK THROTTLE TO 0. 
 		WAIT UNTIL (etaDelegate:call() < burnSettings[5] * burnSettings[2]) or ((ORBIT:PERIOD - etaDelegate:call()) < burnSettings[5] * burnSettings[3]). // wait a little longer (restartBurnFactor) to avoid constant turning off and on
