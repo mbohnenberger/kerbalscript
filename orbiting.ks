@@ -9,27 +9,26 @@ function controlledBurn {
 	// if we are outside the burn window, wait till we hit it again, unless we're close to target height
 	// don't check for the right window if it's set to a negative number
 	if burnSettings[2] > 0 {
-		// left window right of eta. TODO: Don't ignore stop factor
-		set outsideLeftWindow to (ORBIT:PERIOD - etaDelegate:call()) < burnSettings[2].
+		// left window right of eta. 
+		set insideLeftWindow to (ORBIT:PERIOD - etaDelegate:call()) > burnSettings[2] / burnSettings[4].
 	} else {
-		set outsideLeftWindow to etaDelegate:call() > -burnSettings[2]*burnSettings[4].
+		set insideLeftWindow to etaDelegate:call() < -burnSettings[2]*burnSettings[4].
 	}
 	if burnSettings[3] < 0 {
-		// right window left of eta. TODO: Don't ignore stop factor
-		set outsideRightWindow to etaDelegate:call() < -burnSettings[3].
+		// right window left of eta. 
+		set insideRightWindow to etaDelegate:call() > -burnSettings[3] / burnSettings[4].
 	} else {
-		set outsideRightWindow to (ORBIT:PERIOD - etaDelegate:call()) > burnSettings[4]*burnSettings[3].
+		set insideRightWindow to (ORBIT:PERIOD - etaDelegate:call()) < burnSettings[4]*burnSettings[3].
 	}
-	if outsideLeftWindow OR outsideRightWindow { 
-		LOG_DEBUG("Outside burn window. Waiting.").
+
+	// needs to be ored because the checks don't overlap.
+	if insideLeftWindow OR insideRightWindow { 
+		LOCK THROTTLE TO burnSettings[0]. 
+		if autoStage { safe_stage(MAXTHRUST = 0, burnSettings[0]). }	
+	} else {
 		LOCK THROTTLE TO 0. 
 		WAIT UNTIL (etaDelegate:call() < burnSettings[5] * burnSettings[2]) or ((ORBIT:PERIOD - etaDelegate:call()) < burnSettings[5] * burnSettings[3]). // wait a little longer (restartBurnFactor) to avoid constant turning off and on
 		LOG_DEBUG("Continuing.").
-	}
-	// otherwise burn
-	else {
-		LOCK THROTTLE TO burnSettings[0]. 
-		if autoStage { safe_stage(MAXTHRUST = 0, burnSettings[0]). }	
 	}
 }.
 
