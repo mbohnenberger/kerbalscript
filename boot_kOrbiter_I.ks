@@ -8,5 +8,5 @@ ENABLE_DEBUG_MODE().
 
 countdown(5).
 stepped_gravity_launch(2, 80000, 0.66).
-establishOrbit(85000, 0, true).
-stabilizeOrbit(100000, 90000, 0, true, 0.001).
+changePeriapsis(85000, 90, 0, true).
+stabilizeOrbit(100000, 90000, 90, 0, true, 0.01).
