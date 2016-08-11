@@ -118,14 +118,13 @@ function windowedBurn {
 	else if isIncrease <> true and orbitDelegate:call() > target{ LOG_WARN("Orbit attribute not fully decreased"). }
 }.
 
-function guesstimateHeightChangeBurnTime {
-	parameter r.
-	parameter burnHeight. // height at which we start the burn
+function guesstimateHeightChangeBurnTime { // assumes circular orbit
+	parameter targetHeight.
+	parameter currentHeight. // height at which we start the burn
 	parameter planet.
 
-	set vt to SQRT(planet:MU / (r + planet:RADIUS)).
-	set vAtBurn to SQRT(planet:MU * (2 / (planet:RADIUS + burnHeight) - 1 / SHIP:ORBIT:SEMIMAJORAXIS)).
-	LOG_DEBUG("Estimated v at Burn: " + vAtBurn).
+	set vt to SQRT(planet:MU / (currentHeight + planet:RADIUS)).
+	set vAtBurn to SQRT(planet:MU * (2 / (planet:RADIUS + currentHeight) - 1 / SHIP:ORBIT:SEMIMAJORAXIS)).
 	set a to SHIP:MAXTHRUST / SHIP:MASS. // thrust is in kN and mass is in tons
 	set dV to vt - vAtBurn.
 	if dV < 0 { set dV to -dV. }
@@ -168,7 +167,7 @@ function changePeriapsis {
 	parameter autoStage is True.
 	parameter burnSequence is list().
 
-	set burnTime to guesstimateHeightChangeBurnTime(height, APOAPSIS, SHIP:BODY).
+	set burnTime to guesstimateHeightChangeBurnTime(height, PERIAPSIS, SHIP:BODY).
 	if burnSequence:EMPTY {
 		if height > PERIAPSIS {
 			timedBurn(deg, 0, dEtaApo, finalStage, burnTime, autoStage).	
@@ -194,7 +193,7 @@ function changeApoapsis {
 
 	set planet to SHIP:BODY.
 
-	set burnTime to guesstimateHeightChangeBurnTime(height, PERIAPSIS, SHIP:BODY).
+	set burnTime to guesstimateHeightChangeBurnTime(height, APOAPSIS, SHIP:BODY).
 	if burnSequence:EMPTY {
 		if height > APOAPSIS {
 			timedBurn(deg, 0, dEtaPeri, finalStage, burnTime, autoStage).	
@@ -228,7 +227,7 @@ function stabilizeOrbit {
 	}
 
 	LOG_INFO("Stabilizing orbit with apoapsis/periapis: (" + apo + " - " + peri + ")"). 
-	if ETA:APOAPSIS > ETA:PERIAPSIS AND PERIAPSIS < SHIP:ORBIT:BODY:ATMOSPHERE:HEIGHT { 
+	if ETA:APOAPSIS > ETA:PERIAPSIS AND PERIAPSIS < SHIP:ORBIT:BODY:ATM:HEIGHT { 
 		LOG_ERROR("Missed apoapsis with periapsis below atmosphere. FIX MANUALLY!"). 
 		RETURN.
 	}
@@ -237,11 +236,18 @@ function stabilizeOrbit {
 	set errorPeri to ABS(PERIAPSIS - peri).
 	set numBurns to 0.
 
+	LOG_DEBUG("Error Apo: " + errorApo).
+	LOG_DEBUG("Error Peri: " + errorPeri).
+	
+	set d to 90.
+
 	UNTIL (errorApo < err * APOAPSIS AND errorPeri < err * PERIAPSIS) OR STAGE:NUMBER < finalStage OR numBurns >= maxBurns {
 		if ETA:APOAPSIS < ETA:PERIAPSIS {
+			if PERIAPSIS < peri { set d to deg. } else { set d to -deg. }
 			changePeriapsis(peri, deg, finalStage, autoStage).
 		}
 		else {
+			if APOAPSIS < apo { set d to deg. } else { set d to -deg. }
 			changeApoapsis(apo, deg, finalStage, autoStage).
 		}
     	set errorApo to ABS(APOAPSIS - apo).
