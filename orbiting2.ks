@@ -41,8 +41,7 @@ function raisePeriapsis {
 	}
 	
 	set burnSegment to 0.
-	set currentHeight to PERIAPSIS.
-	if r > APOAPSIS { set currentHeight to APOAPSIS. }
+	set currentHeight to MAX(0, PERIAPSIS).
 	if currentHeight < 0 { set currentHeight to 0. }
 	UNTIL currentHeight < burnSettings[burnSegment][0] * r {
 		set burnSegment to burnSegment + 1.
@@ -86,8 +85,7 @@ function lowerPeriapsis {
 	}
 	
 	set burnSegment to 0.
-	set currentHeight to PERIAPSIS.
-	if r > APOAPSIS { set currentHeight to APOAPSIS. }
+	set currentHeight to MAX(0, PERIAPSIS).
 	UNTIL currentHeight > burnSettings[burnSegment][0] * r {
 		set burnSegment to burnSegment + 1.
 	}
@@ -124,8 +122,7 @@ function raiseApoapsis {
 	}
 	
 	set burnSegment to 0.
-	set currentHeight to PERIAPSIS.
-	if r > APOAPSIS { set currentHeight to APOAPSIS. }
+	set currentHeight to MAX(0, APOAPSIS).
 	UNTIL currentHeight < burnSettings[burnSegment][0] * r {
 		set burnSegment to burnSegment + 1.
 	}
@@ -162,8 +159,7 @@ function lowerApoapsis {
 	}
 	
 	set burnSegment to 0.
-	set currentHeight to PERIAPSIS.
-	if r > APOAPSIS { set currentHeight to APOAPSIS. }
+	set currentHeight to MAX(0, APOAPSIS).
 	UNTIL currentHeight > r * burnSettings[burnSegment][0] {
 		set burnSegment to burnSegment + 1.
 	}
