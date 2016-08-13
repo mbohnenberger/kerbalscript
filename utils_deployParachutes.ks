@@ -20,9 +20,15 @@ if DEBUG_MODE { LOG_DEBUG("Parachutes found: " + found_chutes). }
 for chute in found_chutes {
 	set chuteModule to chute:getmodule(chuteModuleName).
 	chuteModule:setField(chuteAltitudeFieldName, deploymentHeight).
+}
+
+LOG_INFO("Parachutes armed. Deploying at " + deploymentHeight + "m radar altitude.").
+WAIT UNTIL ALT:RADAR < 500.
+LOG_INFO("Deploying parachutes.").
+
+for chute in found_chutes {
+	set chuteModule to chute:getmodule(chuteModuleName).
 	if chuteModule:HasEvent(chuteEventName) {
 		chuteModule:DoEvent(chuteEventName).
 	}
 }
-
-LOG_INFO("Parachutes armed. Deploying at " + deploymentHeight + "m radar altitude.").

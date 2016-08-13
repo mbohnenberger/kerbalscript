@@ -57,7 +57,7 @@ function safe_stage {
 	parameter thrttl is 1.0.
 	IF doStage {
 		LOCK THROTTLE TO 0.0.
-		STAGE. WAIT 1.
+		WAIT 0.5. STAGE. WAIT 0.5. // wait before stage, otherwise throttle might not be fully decreased yet.
 		LOCK THROTTLE TO thrttl.
 	}
 }.

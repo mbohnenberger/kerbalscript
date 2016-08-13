@@ -48,13 +48,14 @@ function straight_launch {
 function stepped_gravity_launch {
     parameter finalStage.
     parameter apo.
+	parameter degToNorth.
     parameter thrttl is 1.0.
 
     init_launch(thrttl).
 
+	set angle to 90.
     LOG_INFO("Stepped velocity gravity launch sequence active.").
 
-    set angle to 90.
     set atmosphereHeight to BODY("Kerbin"):ATM:HEIGHT.
     IF apo < atmosphereHeight {
 	LOG_WARN("Target apoapsis is inside atmosphere.").
@@ -73,7 +74,7 @@ function stepped_gravity_launch {
 		set angle to MAX(angle, 0).
 		set hCheck to hCheck + heightStep.
 		LOG_INFO("Pitching to " + angle + " degrees").
-		LOCK STEERING TO HEADING(90,angle).	
+		LOCK STEERING TO HEADING(degToNorth,angle).	
 	    }
 	    safe_stage(MAXTHRUST = 0, thrttl).
     }

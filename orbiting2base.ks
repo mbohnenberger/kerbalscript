@@ -1,6 +1,4 @@
 copy utils_deployParachutes from 0.
-copy orbiting2_decreaseInclination from 0.
-copy orbiting2_increaseInclination from 0.
 copy orbiting2_lowerApoapsisNow from 0.
 copy orbiting2_lowerPeriapsisNow from 0.
 copy orbiting2_raiseApoapsisNow from 0.
@@ -9,6 +7,5 @@ copy orbiting2_lowerApoapsis from 0.
 copy orbiting2_lowerPeriapsis from 0.
 copy orbiting2_raiseApoapsis from 0.
 copy orbiting2_raisePeriapsis from 0.
-copy orbiting2_stabilizeOrbit from 0.
 copy orbiting2_deorbit from 0.
 copy orbiting2_deorbitAndLand from 0.
