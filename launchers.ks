@@ -70,6 +70,7 @@ function stepped_gravity_launch {
     UNTIL APOAPSIS > apo OR STAGE:NUMBER < finalStage {
 	    IF ALTITUDE > hCheck {
 		set angle to angle - 10.
+		set angle to MAX(angle, 0).
 		set hCheck to hCheck + heightStep.
 		LOG_INFO("Pitching to " + angle + " degrees").
 		LOCK STEERING TO HEADING(90,angle).	

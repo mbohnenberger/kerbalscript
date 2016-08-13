@@ -23,6 +23,18 @@ function burnStep {
 	if autoStage { safe_stage(MAXTHRUST = 0, thrttl). }
 }. 
 
+function getOppositeHeight {
+	// look at the current etas. The one closest to half the orbit period is the one opposite from us
+	if ABS(ETA:APOAPSIS - SHIP:ORBIT:PERIOD / 2) > ABS(ETA:PERIAPSIS - SHIP:ORBIT:PERIOD / 2) { return PERIAPSIS. }
+	else { return APOAPSIS. }
+}.
+
+function getOrbitNormal {
+	set n to SHIP:NORTH:FOREVECTOR:NORMALIZED. set u to SHIP:UP:FOREVECTOR:NORMALIZED.
+	set f to VCRS(u, n).
+	return -f * sin(SHIP:ORBIT:INCLINATION) + n * cos(SHIP:ORBIT:INCLINATION).
+}.
+
 // burns until target periapsis is reached. If target periapsis is higher than apoapsis
 // we will keep burning until apoapsis is target height
 function raisePeriapsis {
@@ -31,6 +43,8 @@ function raisePeriapsis {
 	parameter autoStage is True.
 	parameter burnSettings is list().
 	
+	LOG_INFO("Raising periapsis to " + r).
+
 	if burnSettings:EMPTY {
 		set burnSettings to list(
 			list(0.80, 1.0),
@@ -41,9 +55,8 @@ function raisePeriapsis {
 	}
 	
 	set burnSegment to 0.
-	set currentHeight to MAX(0, PERIAPSIS).
-	if currentHeight < 0 { set currentHeight to 0. }
-	UNTIL currentHeight < burnSettings[burnSegment][0] * r {
+	set currentHeight to MAX(0, getOppositeHeight()).
+	UNTIL currentHeight < burnSettings[burnSegment][0] * r OR burnSegment >= burnSettings:LENGTH - 1 {
 		set burnSegment to burnSegment + 1.
 	}
 
@@ -54,17 +67,11 @@ function raisePeriapsis {
 
 	UNTIL burnSegment = burnSettings:LENGTH {
 		LOCK THROTTLE TO burnSettings[burnSegment][1].
-		if r > APOAPSIS {
-			UNTIL APOAPSIS >= r * burnSettings[burnSegment][0] {
-				burnStep(degFromNorth, burnSettings[burnSegment][1], autoStage).
-			}
-		} else {
-			UNTIL PERIAPSIS >= r * burnSettings[burnSegment][0] {
-				burnStep(degFromNorth, burnSettings[burnSegment][1], autoStage).
-			}
-		}
+		// burn until the opposing point is at the target height 
+		UNTIL getOppositeHeight() >= r * burnSettings[burnSegment][0] { burnStep(degFromNorth, burnSettings[burnSegment][1], autoStage). }
 		set burnSegment to burnSegment + 1.
 	}
+	UNLOCK STEERING.
 	LOCK THROTTLE TO 0.0.		
 }. 
 
@@ -75,6 +82,8 @@ function lowerPeriapsis {
 	parameter autoStage is True.
 	parameter burnSettings is list().
 
+	LOG_INFO("Lowering periapsis to " + r).
+
 	if burnSettings:EMPTY {
 		set burnSettings to list(
 			list(1.20, 1.0),
@@ -85,8 +94,8 @@ function lowerPeriapsis {
 	}
 	
 	set burnSegment to 0.
-	set currentHeight to MAX(0, PERIAPSIS).
-	UNTIL currentHeight > burnSettings[burnSegment][0] * r {
+	set currentHeight to MAX(0, getOppositeHeight()).
+	UNTIL currentHeight > burnSettings[burnSegment][0] * r OR burnSegment >= burnSettings:LENGTH - 1 {
 		set burnSegment to burnSegment + 1.
 	}
 
@@ -97,11 +106,10 @@ function lowerPeriapsis {
 
 	UNTIL burnSegment = burnSettings:LENGTH {
 		LOCK THROTTLE TO burnSettings[burnSegment][1].
-		UNTIL PERIAPSIS <= r * burnSettings[burnSegment][0] {
-			burnStep(-degFromNorth, burnSettings[burnSegment][1], autoStage).
-		}
+		UNTIL getOppositeHeight() >= r * burnSettings[burnSegment][0] { burnStep(degFromNorth, burnSettings[burnSegment][1], autoStage). }
 		set burnSegment to burnSegment + 1.
 	}
+	UNLOCK STEERING.
 	LOCK THROTTLE TO 0.0.		
 }. 
 
@@ -111,6 +119,8 @@ function raiseApoapsis {
 	parameter degFromNorth.
 	parameter autoStage is True.
 	parameter burnSettings is list().
+	
+	LOG_INFO("Raising apoapsis to " + r).
 
 	if burnSettings:EMPTY {
 		set burnSettings to list(
@@ -122,8 +132,8 @@ function raiseApoapsis {
 	}
 	
 	set burnSegment to 0.
-	set currentHeight to MAX(0, APOAPSIS).
-	UNTIL currentHeight < burnSettings[burnSegment][0] * r {
+	set currentHeight to MAX(0, getOppositeHeight()).
+	UNTIL currentHeight < burnSettings[burnSegment][0] * r OR burnSegment >= burnSettings:LENGTH - 1 {
 		set burnSegment to burnSegment + 1.
 	}
 
@@ -134,11 +144,10 @@ function raiseApoapsis {
 
 	UNTIL burnSegment = burnSettings:LENGTH {
 		LOCK THROTTLE TO burnSettings[burnSegment][1].
-		UNTIL APOAPSIS >= r * burnSettings[burnSegment][0] {
-			burnStep(degFromNorth, burnSettings[burnSegment][1], autoStage).
-		}
+		UNTIL getOppositeHeight() >= r * burnSettings[burnSegment][0] { burnStep(degFromNorth, burnSettings[burnSegment][1], autoStage). }
 		set burnSegment to burnSegment + 1.
 	}
+	UNLOCK STEERING.
 	LOCK THROTTLE TO 0.0.		
 }. 
 
@@ -149,6 +158,8 @@ function lowerApoapsis {
 	parameter autoStage is True.
 	parameter burnSettings is list().
 	
+	LOG_INFO("Lowering apoapsis to " + r).
+
 	if burnSettings:EMPTY {
 		set burnSettings to list(
 			list(1.20, 1.0),
@@ -159,8 +170,8 @@ function lowerApoapsis {
 	}
 	
 	set burnSegment to 0.
-	set currentHeight to MAX(0, APOAPSIS).
-	UNTIL currentHeight > r * burnSettings[burnSegment][0] {
+	set currentHeight to MAX(0, getOppositeHeight()).
+	UNTIL currentHeight > burnSettings[burnSegment][0] * r OR burnSegment >= burnSettings:LENGTH - 1 {
 		set burnSegment to burnSegment + 1.
 	}
 
@@ -171,19 +182,169 @@ function lowerApoapsis {
 
 	UNTIL burnSegment = burnSettings:LENGTH {
 		LOCK THROTTLE TO burnSettings[burnSegment][1].
-		if r < PERIAPSIS {
-			UNTIL APOAPSIS <= r * burnSettings[burnSegment][0] {
-				burnStep(-degFromNorth, burnSettings[burnSegment][1], autoStage).
-			}
-		} else {
-			UNTIL APOAPSIS <= r * burnSettings[burnSegment][0] {
-				burnStep(-degFromNorth, burnSettings[burnSegment][1], autoStage).
-			}
-		}
+		UNTIL getOppositeHeight() >= r * burnSettings[burnSegment][0] { burnStep(degFromNorth, burnSettings[burnSegment][1], autoStage). }
 		set burnSegment to burnSegment + 1.
 	}
+	UNLOCK STEERING.
 	LOCK THROTTLE TO 0.0.		
 }. 
+
+function increaseInclination {
+	parameter angle.
+	parameter lgtAscendingNode.
+	parameter autoStage is True.
+	parameter burnSettings is list().
+
+	set lgtDescendingNode to MOD(lgtAscendingNode + 180 + 180,360) - 180.
+	LOG_DEBUG("Ascending Node: " + lgtAscendingNode).
+	LOG_DEBUG("Descending Node: " + lgtDescendingNode).
+
+	LOG_INFO("Increasing inclination to " + angle + " at longitude " + lgtAscendingNode).
+	if burnSettings:EMPTY {
+		set burnSettings to list(
+			list(0.80, 1.0),
+			list(0.90, 0.5),
+			list(0.95, 0.1),
+			list(1.00, 0.05)	
+		).
+	}
+	
+	set burnSegment to 0.
+	UNTIL SHIP:ORBIT:INCLINATION < angle * burnSettings[burnSegment][0] OR burnSegment >= burnSettings:LENGTH - 1 {
+		set burnSegment to burnSegment + 1.
+	}
+	
+	set burnAtAsc to ABS(SHIP:LONGITUDE - lgtAscendingNode) < ABS(SHIP:LONGITUDE - lgtDescendingNode).
+	
+	set lastInc to SHIP:ORBIT:INCLINATION - 1.
+	UNTIL burnSegment = burnSettings:LENGTH {
+		if burnAtAsc {
+			WAIT UNTIL ABS(SHIP:LONGITUDE - lgtAscendingNode) < 10.
+			LOG_INFO("Closing in on ascending node. Locking steering.").
+			VECDRAW(V(0,0,0), getOrbitNormal(), RED, "normal", 10, true, 0.1).
+			LOCK STEERING TO getOrbitNormal().
+			WAIT UNTIL ABS(SHIP:LONGITUDE - lgtAscendingNode) < 2.
+			UNTIL SHIP:ORBIT:INCLINATION > angle * burnSettings[burnSegment][0] OR lastInc >= SHIP:ORBIT:INCLINATION {
+				// stop burning if we are decreasing inclination
+				set lastInc to SHIP:ORBIT:INCLINATION.
+				LOCK THROTTLE TO burnSettings[burnSegment][1].
+				LOCK STEERING TO getOrbitNormal().
+				if autoStage { safe_stage(MAXTHRUST = 0, burnSettings[burnSegment][1]). }
+				WAIT 0.2.
+			}	
+			if ABS(SHIP:LONGITUDE - lgtAscendingNode) >= 2 OR lastInc >= SHIP:ORBIT:INCLINATION { 
+				LOG_INFO("Inclination is decreasing. Continuing burn at descending node.").
+				LOCK THROTTLE TO 0.0. 
+				UNLOCK STEERING. 
+				set burnAtAsc to false. set lastInc to SHIP:ORBIT:INCLINATION - 1. 
+			}
+			CLEARVECDRAWS().
+			if SHIP:ORBIT:INCLINATION > angle * burnSettings[burnSegment][0] { set burnSegment to burnSegment + 1. }
+		} 
+		else {
+			WAIT UNTIL ABS(SHIP:LONGITUDE - lgtDescendingNode) < 10.
+			LOG_INFO("Closing in on descending node. Locking steering.").
+			VECDRAW(V(0,0,0), -getOrbitNormal(), RED, "anti-normal", 10, true, 0.1).
+			LOCK STEERING TO -getOrbitNormal().
+			WAIT UNTIL ABS(SHIP:LONGITUDE - lgtDescendingNode) < 2.
+			UNTIL SHIP:ORBIT:INCLINATION > angle * burnSettings[burnSegment][0] OR lastInc >= SHIP:ORBIT:INCLINATION {
+				set lastInc to SHIP:ORBIT:INCLINATION.
+				LOCK THROTTLE TO burnSettings[burnSegment][1].
+				LOCK STEERING TO -getOrbitNormal().
+				if autoStage { safe_stage(MAXTHRUST = 0, burnSettings[burnSegment][1]). }
+				WAIT 0.2.
+			}	
+			if ABS(SHIP:LONGITUDE - lgtDescendingNode) >= 2 OR lastInc >= SHIP:ORBIT:INCLINATION { 
+				LOG_INFO("Inclination is decreasing. Continuing burn at descending node.").
+				LOCK THROTTLE TO 0.0. 
+				UNLOCK STEERING. 
+				set burnAtAsc to true. set lastInc to SHIP:ORBIT:INCLINATION - 1. 
+			}
+			CLEARVECDRAWS().
+			if SHIP:ORBIT:INCLINATION > angle * burnSettings[burnSegment][0] { set burnSegment to burnSegment + 1. }
+		}
+	}	
+	UNLOCK STEERING.
+	LOCK THROTTLE TO 0.0.
+}.
+
+function decreaseInclination {
+	parameter angle.
+	parameter lgtAscendingNode.
+	parameter autoStage is True.
+	parameter burnSettings is list().
+
+	set lgtDescendingNode to MOD(lgtAscendingNode + 180 + 180,360) - 180.
+	LOG_DEBUG("Ascending Node: " + lgtAscendingNode).
+	LOG_DEBUG("Descending Node: " + lgtDescendingNode).
+
+	LOG_INFO("Increasing inclination to " + angle + " at longitude " + lgtAscendingNode).
+	if burnSettings:EMPTY {
+		set burnSettings to list(
+			list(1.20, 1.0),
+			list(1.10, 0.5),
+			list(1.05, 0.1),
+			list(1.00, 0.05)	
+		).
+	}
+	
+	set burnSegment to 0.
+	UNTIL SHIP:ORBIT:INCLINATION > angle * burnSettings[burnSegment][0] OR burnSegment >= burnSettings:LENGTH - 1 {
+		set burnSegment to burnSegment + 1.
+	}
+	
+	set burnAtAsc to ABS(SHIP:LONGITUDE - lgtAscendingNode) < ABS(SHIP:LONGITUDE - lgtDescendingNode).
+	
+	set lastInc to SHIP:ORBIT:INCLINATION + 1.
+	UNTIL burnSegment = burnSettings:LENGTH {
+		if burnAtAsc {
+			WAIT UNTIL ABS(SHIP:LONGITUDE - lgtAscendingNode) < 10.
+			LOG_INFO("Closing in on ascending node. Locking steering.").
+			VECDRAW(V(0,0,0), -getOrbitNormal(), RED, "anti-normal", 10, true, 0.1).
+			LOCK STEERING TO -getOrbitNormal().
+			WAIT UNTIL ABS(SHIP:LONGITUDE - lgtAscendingNode) < 2.
+			UNTIL SHIP:ORBIT:INCLINATION < angle * burnSettings[burnSegment][0] OR lastInc <= SHIP:ORBIT:INCLINATION {
+				// stop burning if we are decreasing inclination
+				set lastInc to SHIP:ORBIT:INCLINATION.
+				LOCK THROTTLE TO burnSettings[burnSegment][1].
+				LOCK STEERING TO -getOrbitNormal().
+				if autoStage { safe_stage(MAXTHRUST = 0, burnSettings[burnSegment][1]). }
+				WAIT 0.2.
+			}	
+			if ABS(SHIP:LONGITUDE - lgtAscendingNode) >= 2 OR lastInc <= SHIP:ORBIT:INCLINATION { 
+				LOCK THROTTLE TO 0.0. 
+				UNLOCK STEERING. 
+				set burnAtAsc to false. set lastInc to SHIP:ORBIT:INCLINATION + 1. 
+			}
+			CLEARVECDRAWS().
+			if SHIP:ORBIT:INCLINATION < angle * burnSettings[burnSegment][0] { set burnSegment to burnSegment + 1. }
+		} 
+		else {
+			WAIT UNTIL ABS(SHIP:LONGITUDE - lgtDescendingNode) < 10.
+			LOG_INFO("Closing in on descending node. Locking steering.").
+			VECDRAW(V(0,0,0), getOrbitNormal(), RED, "normal", 10, true, 0.1).
+			LOCK STEERING TO getOrbitNormal().
+			WAIT UNTIL ABS(SHIP:LONGITUDE - lgtDescendingNode) < 2.
+			UNTIL SHIP:ORBIT:INCLINATION < angle * burnSettings[burnSegment][0] OR lastInc <= SHIP:ORBIT:INCLINATION {
+				set lastInc to SHIP:ORBIT:INCLINATION.
+				LOCK THROTTLE TO burnSettings[burnSegment][1].
+				LOCK STEERING TO getOrbitNormal().
+				if autoStage { safe_stage(MAXTHRUST = 0, burnSettings[burnSegment][1]). }
+				WAIT 0.2.
+			}	
+			if ABS(SHIP:LONGITUDE - lgtDescendingNode) >= 2 OR lastInc <= SHIP:ORBIT:INCLINATION { 
+				LOCK THROTTLE TO 0.0. 
+				UNLOCK STEERING. 
+				set burnAtAsc to true. set lastInc to SHIP:ORBIT:INCLINATION + 1. 
+			}
+			CLEARVECDRAWS().
+			if SHIP:ORBIT:INCLINATION < angle * burnSettings[burnSegment][0] { set burnSegment to burnSegment + 1. }
+		}
+		
+	}	
+	UNLOCK STEERING.
+	LOCK THROTTLE TO 0.0.
+}.
 
 function stabilizeOrbit {
 	parameter h1.
