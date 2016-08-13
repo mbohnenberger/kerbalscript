@@ -1,7 +1,11 @@
 // some variables to abstract stuff away
 GLOBAL HAS_PREDICTION TO Career():CANMAKENODES.
 GLOBAL HAS_ACTION_GROUPS TO Career():CANDOACTIONS.
-GLOBAL DEBUG_MODE TO false.
+GLOBAL DEBUG_MODE TO true.
+
+// part names
+GLOBAL TIP_PARACHUTE_NAME to "Mk16 Parachute".
+GLOBAL RADIAL_PARACHUTE_NAME to "Mk2-R Radial-Mount Parachute".
 
 function ENABLE_DEBUG_MODE {
 	set DEBUG_MODE TO true.
@@ -56,6 +60,47 @@ function safe_stage {
 		STAGE. WAIT 1.
 		LOCK THROTTLE TO thrttl.
 	}
+}.
+
+function drawVec {
+	parameter v.
+	parameter c.
+	parameter label.
+	VECDRAW(V(0,0,0), v, c, label, 15, true, 0.05).
+}.
+
+// estimation based on v for circular orbit at target height
+function guesstimateHeightChangeBurnTime { 
+	parameter targetHeight.
+	parameter currentHeight. // height at which we start the burn
+	parameter planet.
+
+	set vt to SQRT(planet:MU / (currentHeight + planet:RADIUS)).
+	set vAtBurn to SQRT(planet:MU * (2 / (planet:RADIUS + currentHeight) - 1 / SHIP:ORBIT:SEMIMAJORAXIS)).
+	set a to SHIP:MAXTHRUST / SHIP:MASS. // thrust is in kN and mass is in tons
+	set dV to vt - vAtBurn.
+	if dV < 0 { set dV to -dV. }
+	return dV / a.	
+}.
+
+function burnStep {
+	parameter degFromNorth.
+	parameter thrttl.
+	parameter autoStage.
+	LOCK STEERING TO HEADING(degFromNorth, 0).
+	if autoStage { safe_stage(MAXTHRUST = 0, thrttl). }
+}. 
+
+function getOppositeHeight {
+	// look at the current etas. The one closest to half the orbit period is the one opposite from us
+	if ABS(ETA:APOAPSIS - SHIP:ORBIT:PERIOD / 2) > ABS(ETA:PERIAPSIS - SHIP:ORBIT:PERIOD / 2) { return PERIAPSIS. }
+	else { return APOAPSIS. }
+}.
+
+function getOrbitNormal {
+	set n to SHIP:NORTH:FOREVECTOR:NORMALIZED. set u to SHIP:UP:FOREVECTOR:NORMALIZED.
+	set f to VCRS(u, n).
+	return -f * sin(SHIP:ORBIT:INCLINATION) + n * cos(SHIP:ORBIT:INCLINATION).
 }.
 
 // common delegates
