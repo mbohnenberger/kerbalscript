@@ -1,10 +1,7 @@
 declare parameter r.
-declare parameter degFromNorth.
 declare parameter finalStage.
 declare parameter autoStage is True.
 declare parameter burnSettings is list().
-
-run once common.
 
 // burns until target apoapsis is reached.
 LOG_INFO("Raising apoapsis to " + r).
@@ -24,12 +21,14 @@ UNTIL currentHeight < burnSettings[burnSegment][0] * r OR burnSegment >= burnSet
 	set burnSegment to burnSegment + 1.
 }
 
-LOCK STEERING TO HEADING(degFromNorth, 0).	
+LOCK horizontalPrograde TO getHorizonPrograde().
+LOCK STEERING TO horizontalPrograde.	
 WAIT 5.
 
-UNTIL burnSegment = burnSettings:LENGTH OR STAGE:NUMBER < finalStage {
-	LOCK THROTTLE TO burnSettings[burnSegment][1].
-	UNTIL getOppositeHeight() >= r * burnSettings[burnSegment][0] { burnStep(degFromNorth, burnSettings[burnSegment][1], autoStage). }
+UNTIL burnSegment = burnSettings:LENGTH OR STAGE:NUMBER <= finalStage + 1 {
+	set thrttl to burnSettings[burnSegment][1].
+	LOCK THROTTLE TO thrttl.
+	UNTIL getOppositeHeight() >= r * burnSettings[burnSegment][0] { burnStep(burnSettings[burnSegment][1], autoStage). }
 	set burnSegment to burnSegment + 1.
 }
 UNLOCK STEERING.

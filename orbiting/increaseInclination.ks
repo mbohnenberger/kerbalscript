@@ -4,8 +4,6 @@ declare parameter finalStage.
 declare parameter autoStage is True.
 declare parameter burnSettings is list().
 
-run once common.
-
 set lgtDescendingNode to MOD(lgtAscendingNode + 180 + 180,360) - 180.
 LOG_DEBUG("Ascending Node: " + lgtAscendingNode).
 LOG_DEBUG("Descending Node: " + lgtDescendingNode).
@@ -28,7 +26,7 @@ UNTIL SHIP:ORBIT:INCLINATION < angle * burnSettings[burnSegment][0] OR burnSegme
 set burnAtAsc to ABS(SHIP:LONGITUDE - lgtAscendingNode) < ABS(SHIP:LONGITUDE - lgtDescendingNode).
 
 set lastInc to SHIP:ORBIT:INCLINATION - 1.
-UNTIL burnSegment = burnSettings:LENGTH OR STAGE:NUMBER < finalStage {
+UNTIL burnSegment = burnSettings:LENGTH OR STAGE:NUMBER <= finalStage + 1 {
 	if burnAtAsc {
 		WAIT UNTIL ABS(SHIP:LONGITUDE - lgtAscendingNode) < 10.
 		LOG_INFO("Closing in on ascending node. Locking steering.").
@@ -39,7 +37,7 @@ UNTIL burnSegment = burnSettings:LENGTH OR STAGE:NUMBER < finalStage {
 			// stop burning if we are decreasing inclination
 			set lastInc to SHIP:ORBIT:INCLINATION.
 			LOCK THROTTLE TO burnSettings[burnSegment][1].
-			LOCK STEERING TO getOrbitNormal().
+			//LOCK STEERING TO getOrbitNormal().
 			if autoStage { safe_stage(MAXTHRUST = 0, burnSettings[burnSegment][1]). }
 			WAIT 0.2.
 		}	
@@ -61,7 +59,7 @@ UNTIL burnSegment = burnSettings:LENGTH OR STAGE:NUMBER < finalStage {
 		UNTIL SHIP:ORBIT:INCLINATION > angle * burnSettings[burnSegment][0] OR lastInc >= SHIP:ORBIT:INCLINATION {
 			set lastInc to SHIP:ORBIT:INCLINATION.
 			LOCK THROTTLE TO burnSettings[burnSegment][1].
-			LOCK STEERING TO -getOrbitNormal().
+			//LOCK STEERING TO -getOrbitNormal().
 			if autoStage { safe_stage(MAXTHRUST = 0, burnSettings[burnSegment][1]). }
 			WAIT 0.2.
 		}	

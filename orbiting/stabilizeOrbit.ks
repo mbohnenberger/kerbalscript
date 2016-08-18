@@ -1,12 +1,9 @@
 declare parameter h1.
 declare parameter h2.
-declare parameter deg.
 declare parameter finalStage.
 declare parameter autoStage.
 declare parameter maxBurns is 6.
 declare parameter err is 0.01.
-
-run once common.
 
 set apo to 0. set peri to 0.
 if h1 > h2 {
@@ -30,21 +27,21 @@ LOG_DEBUG("Error Peri: " + errorPeri).
 
 set d to 90.
 
-UNTIL (errorApo < err * APOAPSIS AND errorPeri < err * PERIAPSIS) OR STAGE:NUMBER < finalStage OR numBurns >= maxBurns {
+UNTIL (errorApo < err * APOAPSIS AND errorPeri < err * PERIAPSIS) OR STAGE:NUMBER <= finalStage + 1 OR numBurns >= maxBurns {
 	if ETA:APOAPSIS < ETA:PERIAPSIS {
 		if PERIAPSIS < peri {
-			raisePeriapsis(peri, deg, finalStage, autoStage).
+			runpath("orbiting/raisePeriapsis.ks", peri, finalStage, autoStage).
 		}
 		else {
-			lowerPeriapsis(peri, deg, finalStage, autoStage).
+			runpath("orbiting/lowerPeriapsis.ks", peri, finalStage, autoStage).
 		}
 	}
 	else {
 		if APOAPSIS < apo {
-			raiseApoapsis(apo, deg, finalStage, autoStage).
+			runpath("orbiting/raiseApoapsis.ks", apo, finalStage, autoStage).
 		}
 		else {
-			lowerApoapsis(apo, deg, finalStage, autoStage).
+			runpath("orbiting/lowerApoapsis.ks", apo, finalStage, autoStage).
 		}
 	}
 	set errorApo to ABS(APOAPSIS - apo).

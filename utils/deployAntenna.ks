@@ -1,0 +1,44 @@
+declare parameter target is "Mission Control".
+declare parameter nameTag is "".
+declare parameter antennaParts is list().
+
+run once "common/common.ks".
+
+//
+// find antennas 
+//
+set antennaModuleName to "ModuleRTAntenna".
+set antennaEventName to "activate".
+set antennaTargetFieldName to "target".
+if antennaParts:LENGTH <= 0 {
+	set antennaTitles to list(COMMUNOTRON_DTS_M1_NAME).
+} else {
+	set antennaTitles to antennaParts.
+}
+
+set found_antennas to list().
+if nameTag:LENGTH <= 0 {
+	for antennaTitle in antennaTitles {
+		for antenna in SHIP:PARTSTITLED(antennaTitle) { found_antennas:ADD(antenna). }
+	}
+} else {
+	set found_antennas to SHIP:PARTSTAGGED(nameTag).
+}
+
+
+if DEBUG_MODE { LOG_DEBUG("Antennas found: " + found_antennas). }
+if found_antennas:LENGTH <= 0 { LOG_WARN("No antennas found!"). }
+else {
+	set antenna to found_antennas[0]. // pick the first one
+
+	LOG_INFO("Aiming antenna at " + target).
+	set antennaModule to antenna:getmodule(antennaModuleName).
+		if antennaModule:HasEvent(antennaEventName) {
+			antennaModule:DoEvent(drogueChuteEventName).
+			antennaModule:SetField(antennaTargetFieldName, target).
+			LOG_INFO("Antenna deployed and aiming at " + target).
+		} else {
+			LOG_ERROR("Antenna has no event called " + antennaEventName).
+		}
+	}
+}

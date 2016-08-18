@@ -6,10 +6,25 @@ GLOBAL DEBUG_MODE TO true.
 // part names
 GLOBAL TIP_PARACHUTE_NAME to "Mk16 Parachute".
 GLOBAL RADIAL_PARACHUTE_NAME to "Mk2-R Radial-Mount Parachute".
+GLOBAL COMMUNOTRON_DTS_M1_NAME to "Communotron DTS-M1".
 
 function ENABLE_DEBUG_MODE {
 	set DEBUG_MODE TO true.
 	LOG_DEBUG("Debug mode enabled.").
+}.
+
+function countdown {
+    parameter t.
+    
+    LOG_INFO("Counting down...").
+
+    FROM { local c is t. }
+    UNTIL c = 0
+    STEP { set c to c-1. }
+    DO {
+        LOG_INFO("..." + c + "...").
+        WAIT 1.
+    }
 }.
 
 // IO
@@ -62,6 +77,11 @@ function safe_stage {
 	}
 }.
 
+function stageUpTo {
+	parameter finalStage.
+	UNTIL STAGE:NUMBER = finalStage { safe_stage(true, 0.0). }
+}.
+
 function drawVec {
 	parameter v.
 	parameter c.
@@ -84,10 +104,8 @@ function guesstimateHeightChangeBurnTime {
 }.
 
 function burnStep {
-	parameter degFromNorth.
 	parameter thrttl.
 	parameter autoStage.
-	LOCK STEERING TO HEADING(degFromNorth, 0).
 	if autoStage { safe_stage(MAXTHRUST = 0, thrttl). }
 }. 
 
@@ -101,6 +119,20 @@ function getOrbitNormal {
 	set n to SHIP:NORTH:FOREVECTOR:NORMALIZED. set u to SHIP:UP:FOREVECTOR:NORMALIZED.
 	set f to VCRS(u, n).
 	return -f * sin(SHIP:ORBIT:INCLINATION) + n * cos(SHIP:ORBIT:INCLINATION).
+}.
+
+function getHorizonPrograde {
+	set n to SHIP:NORTH:FOREVECTOR:NORMALIZED. set u to SHIP:UP:FOREVECTOR:NORMALIZED.
+	set f to VCRS(u, n).
+	return f * cos(SHIP:ORBIT:INCLINATION) + n * sin(SHIP:ORBIT:INCLINATION).
+}.
+
+function getMunarInterceptAngle {
+	parameter burnHeight.
+
+	set aMun to BODY("Mun"):ORBIT:SEMIMAJORAXIS.
+	set aShip to aMun * 0.5 + BODY("Kerbin"):RADIUS + burnHeight. // elliptical orbit with periapsis at current height and apoapsis on munar height.
+	return 180 * aShip * aShip / (aMun * aMun).
 }.
 
 // common delegates

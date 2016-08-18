@@ -1,0 +1,14 @@
+copypath("0:/utils/deployParachutes.ks","1:/utils/deployParachutes.ks").
+copypath("0:/orbiting/decreaseInclination.ks","1:/orbiting/decreaseInclination.ks").
+copypath("0:/orbiting/increaseInclination.ks","1:/orbiting/increaseInclination.ks").
+copypath("0:/orbiting/lowerApoapsisNow.ks","1:/orbiting/lowerApoapsisNow.ks").
+copypath("0:/orbiting/lowerPeriapsisNow.ks","1:/orbiting/lowerPeriapsisNow.ks").
+copypath("0:/orbiting/raiseApoapsisNow.ks","1:/orbiting/raiseApoapsisNow.ks").
+copypath("0:/orbiting/raisePeriapsisNow.ks","1:/orbiting/raisePeriapsisNow.ks").
+copypath("0:/orbiting/lowerApoapsis.ks","1:/orbiting/lowerApoapsis.ks").
+copypath("0:/orbiting/lowerPeriapsis.ks","1:/orbiting/lowerPeriapsis.ks").
+copypath("0:/orbiting/raiseApoapsis.ks","1:/orbiting/raiseApoapsis.ks").
+copypath("0:/orbiting/raisePeriapsis.ks","1:/orbiting/raisePeriapsis.ks").
+copypath("0:/orbiting/stabilizeOrbit.ks","1:/orbiting/stabilizeOrbit.ks").
+copypath("0:/orbiting/deorbit.ks","1:/orbiting/deorbit.ks").
+copypath("0:/orbiting/deorbitAndLand.ks","1:/orbiting/deorbitAndLand.ks").
