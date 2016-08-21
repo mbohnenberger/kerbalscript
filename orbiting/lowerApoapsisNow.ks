@@ -18,9 +18,11 @@ if burnSettings:EMPTY {
 }
 
 set burnSegment to 0.
-set currentHeight to MAX(0, getOppositeHeight()).
-UNTIL currentHeight > burnSettings[burnSegment][0] * r OR burnSegment >= burnSettings:LENGTH - 1 {
-	set burnSegment to burnSegment + 1.
+
+if SHIP:ORBIT:ECCENTRICITY < 1 {
+	UNTIL getOppositeHeight() > burnSettings[burnSegment][0] * r OR burnSegment >= burnSettings:LENGTH - 1 {
+		set burnSegment to burnSegment + 1.
+	}
 }
 
 LOCK horizontalRetrograde to -getHorizonPrograde().
@@ -30,7 +32,7 @@ WAIT 5.
 UNTIL burnSegment = burnSettings:LENGTH OR STAGE:NUMBER <= finalStage {
 	set thrttl to burnSettings[burnSegment][1].
 	LOCK THROTTLE TO thrttl.
-	UNTIL getOppositeHeight() <= r * burnSettings[burnSegment][0] { burnStep(burnSettings[burnSegment][1], autoStage). }
+	UNTIL getOppositeHeight() <= r * burnSettings[burnSegment][0] AND APOAPSIS > 0 { burnStep(burnSettings[burnSegment][1], autoStage). }
 	set burnSegment to burnSegment + 1.
 }
 UNLOCK STEERING.

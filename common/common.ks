@@ -7,6 +7,7 @@ GLOBAL DEBUG_MODE TO false.
 GLOBAL TIP_PARACHUTE_NAME to "Mk16 Parachute".
 GLOBAL RADIAL_PARACHUTE_NAME to "Mk2-R Radial-Mount Parachute".
 GLOBAL COMMUNOTRON_DTS_M1_NAME to "Communotron DTS-M1".
+GLOBAL COMMUNOTRON_16_NAME to "Communotron 16".
 
 function ENABLE_DEBUG_MODE {
 	set DEBUG_MODE TO true.
@@ -127,7 +128,9 @@ function getOrbitNormal {
 function getHorizonPrograde {
 	set n to SHIP:NORTH:FOREVECTOR:NORMALIZED. set u to SHIP:UP:FOREVECTOR:NORMALIZED.
 	set f to VCRS(u, n).
-	return f * cos(SHIP:ORBIT:INCLINATION) + n * sin(SHIP:ORBIT:INCLINATION).
+	set hPrograde to f * cos(SHIP:ORBIT:INCLINATION) + n * sin(SHIP:ORBIT:INCLINATION).
+	if VDOT(SHIP:PROGRADE:FOREVECTOR, hPrograde) > 0 { return hPrograde. }
+	else { return -hPrograde. }
 }.
 
 function getMunarInterceptAngle {
