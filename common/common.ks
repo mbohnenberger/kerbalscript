@@ -1,7 +1,7 @@
 // some variables to abstract stuff away
 GLOBAL HAS_PREDICTION TO Career():CANMAKENODES.
 GLOBAL HAS_ACTION_GROUPS TO Career():CANDOACTIONS.
-GLOBAL DEBUG_MODE TO true.
+GLOBAL DEBUG_MODE TO false.
 
 // part names
 GLOBAL TIP_PARACHUTE_NAME to "Mk16 Parachute".
@@ -71,9 +71,11 @@ function safe_stage {
 	parameter doStage is True.
 	parameter thrttl is 1.0.
 	IF doStage {
+		LOG_DEBUG("Staging " + STAGE:NUMBER).
 		LOCK THROTTLE TO 0.0.
 		WAIT 0.5. STAGE. WAIT 0.5. // wait before stage, otherwise throttle might not be fully decreased yet.
 		LOCK THROTTLE TO thrttl.
+		LOG_DEBUG("New stage " + STAGE:NUMBER).
 	}
 }.
 
@@ -100,6 +102,7 @@ function guesstimateHeightChangeBurnTime {
 	set a to SHIP:MAXTHRUST / SHIP:MASS. // thrust is in kN and mass is in tons
 	set dV to vt - vAtBurn.
 	if dV < 0 { set dV to -dV. }
+	if a <= 0.01 { return 0. } 
 	return dV / a.	
 }.
 
@@ -133,6 +136,20 @@ function getMunarInterceptAngle {
 	set aMun to BODY("Mun"):ORBIT:SEMIMAJORAXIS.
 	set aShip to aMun * 0.5 + BODY("Kerbin"):RADIUS + burnHeight. // elliptical orbit with periapsis at current height and apoapsis on munar height.
 	return 180 * aShip * aShip / (aMun * aMun).
+}.
+
+function warpToApoapsis {
+	parameter buffer is 0.
+	WAIT 3. // make sure previous burns finish.
+	set t to MAX(0, ETA:APOAPSIS - buffer).
+	WARPTO(TIME:SECONDS + t).
+}.
+
+function warpToPeriapsis {
+	parameter buffer is 0.
+	WAIT 3. // make sure previous burns finish.
+	set t to MAX(0, ETA:PERIAPSIS - buffer).
+	WARPTO(TIME:SECONDS + t).
 }.
 
 // common delegates

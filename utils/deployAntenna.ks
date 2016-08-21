@@ -1,4 +1,4 @@
-declare parameter target is "Mission Control".
+declare parameter commTarget is "Mission Control".
 declare parameter nameTag is "".
 declare parameter antennaParts is list().
 
@@ -31,14 +31,13 @@ if found_antennas:LENGTH <= 0 { LOG_WARN("No antennas found!"). }
 else {
 	set antenna to found_antennas[0]. // pick the first one
 
-	LOG_INFO("Aiming antenna at " + target).
+	LOG_INFO("Aiming antenna at " + commTarget).
 	set antennaModule to antenna:getmodule(antennaModuleName).
-		if antennaModule:HasEvent(antennaEventName) {
-			antennaModule:DoEvent(drogueChuteEventName).
-			antennaModule:SetField(antennaTargetFieldName, target).
-			LOG_INFO("Antenna deployed and aiming at " + target).
-		} else {
-			LOG_ERROR("Antenna has no event called " + antennaEventName).
-		}
+	if antennaModule:HasEvent(antennaEventName) {
+		antennaModule:SetField(antennaTargetFieldName, commTarget).
+		antennaModule:DoEvent(antennaEventName).
+		LOG_INFO("Antenna deployed and aiming at " + commTarget).
+	} else {
+		LOG_ERROR("Antenna has no event called " + antennaEventName).
 	}
 }

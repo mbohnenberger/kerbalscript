@@ -3,6 +3,8 @@ declare parameter finalStage.
 declare parameter autoStage is True.
 declare parameter burnSettings is list().
 
+if STAGE:NUMBER <= finalStage { LOG_WARN("Final stage reached. Not adjusting orbit."). }
+
 // burns until target apoapsis is reached.
 LOG_INFO("Raising apoapsis to " + r).
 
@@ -25,7 +27,7 @@ LOCK horizontalPrograde TO getHorizonPrograde().
 LOCK STEERING TO horizontalPrograde.	
 WAIT 5.
 
-UNTIL burnSegment = burnSettings:LENGTH OR STAGE:NUMBER <= finalStage + 1 {
+UNTIL burnSegment = burnSettings:LENGTH OR STAGE:NUMBER <= finalStage {
 	set thrttl to burnSettings[burnSegment][1].
 	LOCK THROTTLE TO thrttl.
 	UNTIL getOppositeHeight() >= r * burnSettings[burnSegment][0] { burnStep(burnSettings[burnSegment][1], autoStage). }
@@ -33,3 +35,4 @@ UNTIL burnSegment = burnSettings:LENGTH OR STAGE:NUMBER <= finalStage + 1 {
 }
 UNLOCK STEERING.
 LOCK THROTTLE TO 0.0.
+SET SHIP:CONTROL:PILOTMAINTHROTTLE TO 0.
